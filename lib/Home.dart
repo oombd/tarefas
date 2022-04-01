@@ -15,28 +15,98 @@ class _HomeState extends State<Home> {
 
   List _lista = [];
 
-  _salvarArquivo() async {
+  TextEditingController _controllerTarefa = TextEditingController();
+
+  _getFile() async {
     final diretorio = await getApplicationDocumentsDirectory();
-    File arquivo =  File("${diretorio.path}/dados.json");
+    return File("${diretorio.path}/dados.json");
+  }
 
-    Map<String, dynamic> tarefa = Map();
-    tarefa["tarefa"] = "sdhjbfzisbdli";
-    tarefa["realizada"] = false;
-    _lista.add(tarefa);
+  _salvarTarefa() {
+    String textoDigitado = _controllerTarefa.text;
+    Map<String, dynamic> tarefa = {};
+    tarefa["nota"] = textoDigitado;
+    tarefa["status"] = false;
 
+    setState(() {
+      _lista.add(tarefa);
+    });
+    _salvarArquivo();
+    _controllerTarefa.text = "";
+  }
+  _salvarArquivo() async {
+
+    var arquivo = await _getFile();
     String dados = json.encode(_lista);
     arquivo.writeAsString(dados);
+  }
+
+  _lerArquivo() async {
+    try {
+      final arquivo = await _getFile();
+      return arquivo.readAsString();
+    } catch (e) {
+      var erro = e.toString();
+      return erro;
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _lerArquivo().then( ( dados ) {
+      setState(() {
+        _lista = json.decode(dados);
+      });
+    });
+  }
+
+  Widget criarIntemLista(context, index) {
+
+    final item = _lista[index]["nota"];
+    return Dismissible(
+        key: Key(item),
+        direction: DismissDirection.endToStart,
+        onDismissed: (direction){
+          _lista.removeAt(index);
+          _salvarArquivo();
+        },
+        background: Container(
+          color: Colors.red,
+          padding: EdgeInsets.all(13),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: <Widget>[
+              Icon(
+                  Icons.delete,
+                color: Colors.white,
+              )
+            ],
+          ),
+        ),
+        child: CheckboxListTile(
+            title: Text(_lista[index]["nota"]),
+            value: _lista[index]['status'],
+            onChanged: (valor){
+              setState(() {
+                _lista[index]["status"] = valor;
+              });
+              _salvarArquivo();
+            }
+        )
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        color: Color.fromARGB(255, 238, 238, 238),
         alignment: Alignment.topCenter,
-        padding: const EdgeInsets.only(left: 5, right: 5, bottom: 40, top: 35),
+        padding: const EdgeInsets.only(left: 10, right: 10, bottom: 45, top: 40),
         child: Container(
           decoration: const BoxDecoration(
-              color: Color.fromARGB(255, 238, 238, 238),
+              color: Colors.white,
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(30.0),
                 topRight: Radius.circular(30.0),
@@ -47,17 +117,13 @@ class _HomeState extends State<Home> {
           width: MediaQuery.of(context).size.width,
           height: MediaQuery.of(context).size.height * 0.87,
           //color: const Color.fromARGB(255, 255, 1, 1),
-          padding: const EdgeInsets.all(30),
+          padding: const EdgeInsets.all(10),
           child: Column(
             children: <Widget>[
               Expanded(
                   child: ListView.builder(
                     itemCount: _lista.length,
-                    itemBuilder: (context, index) {
-                      return ListTile(
-                        title: Text(_lista[index]),
-                      );
-                    },
+                    itemBuilder: criarIntemLista,
                   ),
               ),
             ],
@@ -66,21 +132,22 @@ class _HomeState extends State<Home> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromARGB(255, 123, 0, 0),
+        backgroundColor: const Color.fromARGB(255, 0, 0, 0),
         foregroundColor: Colors.white,
-        focusColor: Colors.blue,
-        hoverColor: Colors.orange,
-        splashColor: Colors.orange,
+        focusColor: Colors.white30,
+        hoverColor: Colors.black54,
+        splashColor: Colors.black54,
         elevation: 0,
         child: const Icon(Icons.add),
         onPressed: (){
-
           showDialog(
               context: context,
               builder: (context) {
                 return AlertDialog(
+                  scrollable: true,
                   title: const Text("Adicionar tarefa"),
                   content: TextField(
+                    controller: _controllerTarefa,
                     decoration: const InputDecoration(
                       labelText: "Digite sua tarefa"
                     ),
@@ -90,12 +157,19 @@ class _HomeState extends State<Home> {
                   ),
                   actions: <Widget>[
                     TextButton(
-                      child: Text("Cancelar"),
+                      child: const Text("Cancelar"),
                       onPressed: () => Navigator.pop(context),
                     ),
                     TextButton(
-                      child: Text("Salvar"),
-                      onPressed: (){} ,
+                      child: const Text("Salvar"),
+                      onPressed: () {
+                        if (_controllerTarefa.text.isEmpty) {
+                          Navigator.pop(context);
+                          return;
+                        }
+                          _salvarTarefa();
+                          Navigator.pop(context);
+                      },
                     )
                   ],
                 );
@@ -104,17 +178,22 @@ class _HomeState extends State<Home> {
         },
         //child: const Icon(Icons.add),
       ),
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(),
-        child: Row (
-          children: <Widget>[
-            IconButton(
-                onPressed: (){},
-                icon: Icon(Icons.menu)
-            ),
-          ],
-        )
-      ),
+      bottomNavigationBar: Container(
+        color: Color.fromARGB(255, 238, 238, 238),
+        child: BottomAppBar(
+          elevation: 0,
+            color: Colors.white,
+            shape: const CircularNotchedRectangle(),
+            child: Row (
+              children: <Widget>[
+                IconButton(
+                    onPressed: (){},
+                    icon: const Icon(Icons.menu)
+                ),
+              ],
+            )
+        ),
+      )
     );
   }
 }
